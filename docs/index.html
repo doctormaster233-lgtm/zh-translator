@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Chinese and English translator with offline pinyin input, tone marks, and speech.">
+  <title>译 · Chinese ↔ English</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="seal" aria-hidden="true">译</span>
+      <div>
+        <h1>Chinese ↔ English</h1>
+        <p>Translate both ways. Type pinyin when the source is Chinese — the dictionary stays on this device.</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="langbar">
+      <label class="lang">
+        <span class="lab">From</span>
+        <select id="from" aria-label="Source language">
+          <option value="zh" selected>中文 · Chinese</option>
+          <option value="en">English</option>
+        </select>
+      </label>
+      <button type="button" id="swap" class="swap" aria-label="Swap languages" title="Swap languages">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7 7h11.2l-2.6-2.6L17 3l5 5-5 5-1.4-1.4L18.2 9H7V7zm10 10H5.8l2.6 2.6L7 21l-5-5 5-5 1.4 1.4L5.8 15H17v2z"/></svg>
+      </button>
+      <label class="lang">
+        <span class="lab">To</span>
+        <select id="to" aria-label="Target language">
+          <option value="en" selected>English</option>
+          <option value="zh">中文 · Chinese</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="panels">
+      <section class="panel" aria-label="Source text">
+        <div class="tools">
+          <span class="who" id="src-who">中文</span>
+          <span class="count" id="count">0</span>
+          <span class="spacer"></span>
+          <button type="button" id="mic" class="icon" aria-pressed="false" aria-label="Speak to type" title="Speak to type">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+          </button>
+          <button type="button" id="speak-src" class="icon" aria-label="Read source aloud" title="Read source aloud">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3 10v4h4l5 5V5L7 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4.03v8.05A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54z"/></svg>
+          </button>
+          <button type="button" id="copy-src" class="icon" aria-label="Copy source" title="Copy source">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+          </button>
+          <button type="button" id="clear" class="icon" aria-label="Clear source" title="Clear">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.71 2.88 18.3 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.29-6.3z"/></svg>
+          </button>
+        </div>
+        <textarea id="src" rows="6" maxlength="2000" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" lang="en" placeholder="Type pinyin — nihao or ni3hao3 — or paste Chinese"></textarea>
+        <div id="cand" class="cand" hidden></div>
+        <p class="hint" id="hint"></p>
+        <div id="src-py" class="py" hidden></div>
+      </section>
+
+      <section class="panel" aria-label="Translation">
+        <div class="tools">
+          <span class="who" id="out-who">English</span>
+          <span class="spacer"></span>
+          <button type="button" id="speak-out" class="icon" aria-label="Read translation aloud" title="Read translation aloud">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3 10v4h4l5 5V5L7 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4.03v8.05A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54z"/></svg>
+          </button>
+          <button type="button" id="copy-out" class="icon" aria-label="Copy translation" title="Copy translation">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+          </button>
+        </div>
+        <div id="out" class="out placeholder" role="status">Translation</div>
+        <p class="prov" id="prov"></p>
+        <div id="out-py" class="py" hidden></div>
+      </section>
+    </div>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <footer>
+      <p>Pinyin matches come from <a href="https://cc-cedict.org/wiki/">CC-CEDICT</a> (CC BY-SA 4.0), bundled in this page so the keyboard works offline. Translation uses a public Google endpoint and falls back to <a href="https://mymemory.translated.net/doc/spec.php">MyMemory</a>. Speech uses the browser's own voice APIs. <a href="NOTICE.md">Notice &amp; licenses</a>.</p>
+    </footer>
+  </main>
+
+  <script src="ime.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
