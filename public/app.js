@@ -71,24 +71,17 @@
     scheduleTranslate(0);
   }
 
-  function rubyBlock(text) {
+  // Google-Translate-style pinyin: the whole sentence on one readable line,
+  // words grouped, punctuation kept, sentences capitalised ('Wǒ hěn huānyíng nǐ.').
+  function pinyinBlock(text) {
     if (!window.ZhIme || !ZhIme.ready() || !text) return '';
-    const segs = ZhIme.annotate(text);
-    if (!segs.some((s) => s.pinyin)) return '';
-    const line = segs.map((s) => s.pinyin).filter(Boolean).join(' ');
-    const ruby = segs.map((seg) => {
-      if (!seg.pinyin) return escapeHtml(seg.text);
-      const chars = Array.from(seg.text);
-      if (seg.parts && seg.parts.length === chars.length) {
-        return chars.map((ch, i) => '<ruby>' + escapeHtml(ch) + '<rt>' + escapeHtml(seg.parts[i]) + '</rt></ruby>').join('');
-      }
-      return '<ruby>' + escapeHtml(seg.text) + '<rt>' + escapeHtml(seg.pinyin) + '</rt></ruby>';
-    }).join('');
-    return '<p class="py-line">' + escapeHtml(line) + '</p><div class="py-ruby">' + ruby + '</div>';
+    const line = ZhIme.sentencePinyin(text);
+    if (!line) return '';
+    return '<p class="py-line" lang="zh-Latn-pinyin">' + escapeHtml(line) + '</p>';
   }
 
   function renderPy(el, text) {
-    const html = rubyBlock(text);
+    const html = pinyinBlock(text);
     if (!html) {
       el.hidden = true;
       el.innerHTML = '';

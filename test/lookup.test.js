@@ -44,6 +44,24 @@ assert.strictEqual(ime.remainderAfterPick('nihao', 'ni'), 'hao');
 assert.strictEqual(ime.remainderAfterPick('ni3hao3', 'ni'), 'hao3');
 assert.strictEqual(ime.remainderAfterPick('nihao', 'nihao'), '');
 
+// Google-Translate-style sentence pinyin
+const sentenceCases = {
+  '我很欢迎你': 'Wǒ hěn huānyíng nǐ',
+  '我很欢迎你。': 'Wǒ hěn huānyíng nǐ.',
+  '早上好！你叫什么名字？': 'Zǎoshanghǎo! Nǐ jiào shénme míngzi?',
+  '今天天气很好，我们去公园散步吧。': 'Jīntiān tiānqì hěn hǎo, wǒmen qù gōngyuán sànbù ba.',
+  '你会说英语吗？': 'Nǐ huì shuō Yīngyǔ ma?',
+  '西安在中国。': "Xī'ān zài Zhōngguó.",
+  '他说：“我爱北京。”': 'Tā shuō: "Wǒ ài Běijīng."',
+  '我有3个iPhone。': 'Wǒ yǒu 3 gè iPhone.',
+  '朋友们好': 'Péngyoumen hǎo',
+  '第一行\n第二行': "Dìyī xíng\nDì'èr xíng",
+};
+Object.keys(sentenceCases).forEach((zh) => {
+  assert.strictEqual(ime.sentencePinyin(zh), sentenceCases[zh], 'sentencePinyin ' + zh);
+});
+assert.strictEqual(ime.sentencePinyin('hello'), '', 'no pinyin line for text without Chinese');
+
 console.log('lookup tests passed');
 console.log(' nihao   ', words('nihao').slice(0, 5).join(' '));
 console.log(' xiexie  ', words('xiexie').slice(0, 5).join(' '));

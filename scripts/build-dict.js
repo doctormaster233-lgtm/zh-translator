@@ -130,6 +130,10 @@ for (const line of fs.readFileSync(CEDICT, 'utf8').split('\n')) {
   }
   const id = word + '\t' + py.key + '\t' + py.tones;
   const prev = dedup.get(id);
+  // Proper nouns: CC-CEDICT capitalises them ([Bei3 jing1]). Only flag a word when
+  // every reading with this key is capitalised (王 the surname vs 王 king stays lowercase).
+  const proper = /^[A-Z]/.test(m[3].trim());
+  if (prev) prev.proper = prev.proper && proper;
   if (!prev || listed > prev.listed) {
     dedup.set(id, {
       k: py.key,
@@ -139,6 +143,7 @@ for (const line of fs.readFileSync(CEDICT, 'utf8').split('\n')) {
       t: py.tones,
       syls: py.syls,
       aligned,
+      proper: prev ? prev.proper : proper,
     });
   }
 }
@@ -173,7 +178,7 @@ for (const e of dedup.values()) {
     f = vote + (winner ? listedChar : 0);
     if (f <= 0) f = 1;
   }
-  entries.push([e.k, e.w, e.p, f, e.t]);
+  entries.push(e.proper ? [e.k, e.w, e.p, f, e.t, 1] : [e.k, e.w, e.p, f, e.t]);
 }
 
 entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : b[3] - a[3]));
@@ -182,7 +187,7 @@ const payload = {
   license: 'Dictionary data derived from CC-CEDICT (CC BY-SA 4.0) with frequency ranks from hermitdave/FrequencyWords (OpenSubtitles).',
   built: new Date().toISOString(),
   count: entries.length,
-  // [pinyin key, simplified word, tone-marked pinyin, frequency, tone digits]
+  // [pinyin key, simplified word, tone-marked pinyin, frequency, tone digits, proper-noun flag (optional 1)]
   e: entries,
 };
 

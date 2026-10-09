@@ -76,8 +76,8 @@
         </div>
         <textarea id="src" rows="6" maxlength="2000" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" lang="en" placeholder="Type pinyin — nihao or ni3hao3 — or paste Chinese"></textarea>
         <div id="cand" class="cand" hidden></div>
-        <p class="hint" id="hint"></p>
         <div id="src-py" class="py" hidden></div>
+        <p class="hint" id="hint"></p>
       </section>
 
       <section class="panel" aria-label="Translation">
@@ -91,9 +91,11 @@
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
           </button>
         </div>
-        <div id="out" class="out placeholder" role="status">Translation</div>
+        <div class="out-wrap">
+          <div id="out" class="out placeholder" role="status">Translation</div>
+          <div id="out-py" class="py" hidden></div>
+        </div>
         <p class="prov" id="prov"></p>
-        <div id="out-py" class="py" hidden></div>
       </section>
     </div>
 

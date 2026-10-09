@@ -330,24 +330,21 @@ textarea::placeholder { color: var(--faint); }
 
 .cand-empty { margin: 0; color: var(--muted); }
 
-.py { padding: 8px 6px 0; }
+.py { padding: 6px 6px 10px; }
 
+/* Full-sentence pinyin, Google Translate style */
 .py-line {
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--py);
-  font-size: 0.98rem;
-  line-height: 1.45;
+  font-size: 1.125rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.py-ruby { line-height: 2.35; font-size: 1.15rem; }
-
-ruby { ruby-position: over; margin-right: 0.15em; }
-
-rt {
-  color: var(--muted);
-  font-size: 0.62em;
-  font-weight: 400;
-}
+/* Output text and its pinyin share the panel's minimum height, so the pinyin sits right under the Chinese. */
+.out-wrap { min-height: 180px; margin-top: 4px; }
+.out-wrap .out { min-height: 0; margin: 0; }
 
 .prov { min-height: 1.2em; padding: 0 6px; }
 
@@ -386,6 +383,7 @@ footer a:hover { color: var(--ink); }
   .langbar { margin-top: 40px; gap: 8px; }
   .panels { grid-template-columns: 1fr; }
   textarea, .out { min-height: 140px; font-size: 1.125rem; }
+  .out-wrap { min-height: 140px; }
 }
 
 @media (max-width: 420px) {

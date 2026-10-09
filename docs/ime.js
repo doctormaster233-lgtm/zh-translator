@@ -101,6 +101,7 @@
       p: row[2],
       f: row[3] || 0,
       t: row[4] || '',
+      n: row[5] === 1,
     }));
     if (entries.length && entries[0].k > entries[entries.length - 1].k) {
       entries.sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : b.f - a.f));
@@ -162,6 +163,9 @@
     return 2.2 * len;
   }
 
+  // Sentence particles whose dictionary-frequency reading is the wrong one in running text.
+  const PARTICLE = { 吗: 'ma', 吧: 'ba', 啊: 'a', 呀: 'ya', 嘛: 'ma', 呢: 'ne', 了: 'le', 着: 'zhe', 的: 'de', 得: 'de', 么: 'me' };
+
   function annotate(text) {
     const s = String(text || '');
     const chars = Array.from(s);
@@ -213,11 +217,11 @@
     return spans.map((span) => {
       const textPart = chars.slice(span.from, span.to).join('');
       if (!span.entry) return { text: textPart, pinyin: '', parts: [] };
-      const py = span.entry.p || '';
+      const py = PARTICLE[textPart] || span.entry.p || '';
       const bits = py ? py.split(/\s+/) : [];
       const han = Array.from(textPart).filter(isHanChar);
       const parts = bits.length === han.length ? bits : [];
-      return { text: textPart, pinyin: py, parts };
+      return { text: textPart, pinyin: py, parts, proper: !!span.entry.n };
     });
   }
 
@@ -319,6 +323,93 @@
     return s.slice(i).replace(/^[\s'\-]+/, '');
   }
 
+  // Full-width punctuation → the Latin marks Google Translate shows in its pinyin line.
+  const PUNCT = {
+    '。': '.', '．': '.', '，': ',', '、': ',', '！': '!', '？': '?', '：': ':', '；': ';',
+    '（': '(', '）': ')', '【': '[', '】': ']', '《': '"', '》': '"', '〈': '"', '〉': '"',
+    '“': '"', '”': '"', '‘': "'", '’': "'", '「': '"', '」': '"', '『': '"', '』': '"',
+    '…': '…', '～': '~', '—': '—', '　': ' ',
+  };
+
+  /** Join a word's syllables Google-style: 'xī ān' → "xī'ān", 'huān yíng' → 'huānyíng'. */
+  function joinWord(pinyin) {
+    const syl = String(pinyin || '').trim().split(/\s+/).filter(Boolean);
+    return syl.map((p, i) => (i > 0 && /^[aeoāáǎàēéěèōóǒò]/i.test(p) ? "'" + p : p)).join('');
+  }
+
+  function capitalise(word) {
+    return word ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+  }
+
+  /**
+   * Whole-sentence pinyin like Google Translate's: words grouped (no spaces inside
+   * a word, spaces between words), punctuation kept, each sentence capitalised.
+   * '我很欢迎你。' → 'Wǒ hěn huānyíng nǐ.'
+   */
+  function sentencePinyin(text) {
+    const segs = annotate(text);
+    if (!segs.some((seg) => seg.pinyin)) return '';
+    const tokens = []; // { t: string, kind: 'word' | 'open' | 'close' | 'space' | 'nl' | 'other' }
+    segs.forEach((seg) => {
+      if (seg.pinyin) {
+        const w = joinWord(seg.pinyin);
+        const last = tokens[tokens.length - 1];
+        if (seg.text === '们' && last && last.kind === 'word') { last.t += w; return; } // 朋友们 → péngyoumen
+        tokens.push({ t: seg.proper ? capitalise(w) : w, kind: 'word' });
+        return;
+      }
+      for (const ch of seg.text) {
+        if (ch === '\n') tokens.push({ t: '\n', kind: 'nl' });
+        else if (/\s/.test(ch)) tokens.push({ t: ' ', kind: 'space' });
+        else {
+          const m = PUNCT[ch] != null ? PUNCT[ch] : ch;
+          if (/^[.,!?:;)\]…~]$/.test(m) || ch === '”' || ch === '’' || ch === '》' || ch === '」' || ch === '』' || ch === '〉') tokens.push({ t: m, kind: 'close' });
+          else if (/^[(\[]$/.test(m) || ch === '“' || ch === '‘' || ch === '《' || ch === '「' || ch === '『' || ch === '〈') tokens.push({ t: m, kind: 'open' });
+          else if (m === ' ') tokens.push({ t: ' ', kind: 'space' });
+          else {
+            // Latin letters, digits and other symbols: merge runs into one token.
+            const last = tokens[tokens.length - 1];
+            if (last && last.kind === 'other' && !last.closed) last.t += m;
+            else tokens.push({ t: m, kind: 'other' });
+          }
+        }
+      }
+    });
+    let out = '';
+    let capNext = true;
+    let prev = null;
+    tokens.forEach((tok) => {
+      if (tok.kind === 'space') {
+        if (prev && prev.kind !== 'space' && prev.kind !== 'nl') { out += ' '; prev = tok; }
+        return;
+      }
+      if (tok.kind === 'nl') {
+        out = out.replace(/ +$/, '') + '\n';
+        capNext = true;
+        prev = tok;
+        return;
+      }
+      if (tok.kind === 'close') {
+        out = out.replace(/ +$/, '') + tok.t;
+        if (/[.!?…]/.test(tok.t)) capNext = true;
+        prev = tok;
+        return;
+      }
+      if (tok.kind === 'open') {
+        if (prev && /[:：]$/.test(out) && /^["']$/.test(tok.t)) capNext = true; // 他说：“我…” → Tā shuō: "Wǒ…"
+      }
+      const needSpace = prev && prev.kind !== 'space' && prev.kind !== 'nl' && prev.kind !== 'open';
+      let t = tok.t;
+      if ((tok.kind === 'word' || tok.kind === 'other') && capNext) {
+        t = capitalise(t);
+        capNext = false;
+      }
+      out += (needSpace ? ' ' : '') + t;
+      prev = tok;
+    });
+    return out.replace(/ +\n/g, '\n').trim();
+  }
+
   function ready() {
     return entries.length > 0;
   }
@@ -334,5 +425,6 @@
     compositionPinyin,
     remainderAfterPick,
     ready,
+    sentencePinyin,
   };
 });
