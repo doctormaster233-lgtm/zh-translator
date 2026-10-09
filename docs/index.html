@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#09090b">
   <meta name="description" content="Chinese and English translator with offline pinyin input, tone marks, and speech.">
   <title>译 · Chinese ↔ English</title>
   <link rel="icon" href="data:,">
@@ -10,12 +12,17 @@
 </head>
 <body>
   <header class="top">
-    <div class="brand">
-      <span class="seal" aria-hidden="true">译</span>
+    <nav class="site" aria-label="Site">
+      <a class="home" href="https://www.doctormaster.uk/">Doctor Master UK</a>
+      <span class="crumb" aria-hidden="true">/</span>
+      <span class="crumb">Translator</span>
+    </nav>
+    <div class="intro">
       <div>
         <h1>Chinese ↔ English</h1>
-        <p>Translate both ways. Type pinyin when the source is Chinese — the dictionary stays on this device.</p>
+        <p class="lede">Translate both ways. Type pinyin when the source is Chinese — the dictionary stays on this device.</p>
       </div>
+      <span class="seal" aria-hidden="true">译</span>
     </div>
   </header>
 
@@ -85,6 +92,7 @@
     <p id="status" class="status" role="status" aria-live="polite"></p>
     <footer>
       <p>Pinyin matches come from <a href="https://cc-cedict.org/wiki/">CC-CEDICT</a> (CC BY-SA 4.0), bundled in this page so the keyboard works offline. Translation uses a public Google endpoint and falls back to <a href="https://mymemory.translated.net/doc/spec.php">MyMemory</a>. Speech uses the browser's own voice APIs. <a href="NOTICE.md">Notice &amp; licenses</a>.</p>
+      <p class="back"><a href="https://www.doctormaster.uk/">← Back to doctormaster.uk</a></p>
     </footer>
   </main>
 

@@ -412,8 +412,11 @@
   }
 
   // Static hosts (GitHub Pages, Netlify, ...) have no /api/translate proxy.
-  // Skip it on *.github.io, and stop asking after the first miss elsewhere.
-  let proxyMissing = /\.github\.io$/i.test(location.hostname);
+  // Skip it on *.github.io or when the page opts out with
+  // <meta name="translator-proxy" content="off">, and stop asking after the
+  // first miss elsewhere.
+  let proxyMissing = /\.github\.io$/i.test(location.hostname)
+    || !!document.querySelector('meta[name="translator-proxy"][content="off"]');
 
   async function requestTranslation(q, from, to, signal) {
     if (!proxyMissing) {
