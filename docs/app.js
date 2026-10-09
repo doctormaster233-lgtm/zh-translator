@@ -15,6 +15,7 @@
   const provEl = $('prov');
   const countEl = $('count');
   const micBtn = $('mic');
+  const micMsgEl = $('mic-msg');
   const srcWho = $('src-who');
   const outWho = $('out-who');
 
@@ -26,6 +27,7 @@
     listening: false,
     recog: null,
     micBase: '',
+    micTap: 0,
     req: 0,
     timer: null,
     abort: null,
@@ -533,57 +535,145 @@
     }
   }
 
-  function toggleMic() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      setStatus('Speech recognition is not supported in this browser. Use Chrome, Edge, or Safari.');
+  // ---- Microphone dictation (Web Speech SpeechRecognition) ----
+  // A fresh recognizer is built on every tap: Android Chrome often fails
+  // silently when one instance is reused. Every failure is shown under the
+  // input with the exact error code so problems on phones can be diagnosed.
+  const MIC_HINTS = {
+    'no-speech': 'Nothing was heard. Tap the mic and start speaking right after the beep.',
+    'audio-capture': 'The microphone could not be opened. Another app (call, recorder, voice assistant) may be using it — close it and try again.',
+    'not-allowed': 'Microphone access was refused. Allow the microphone for this site (lock icon → Permissions) and try again.',
+    'service-not-allowed': 'The speech service refused to run. On Android, check the Google app is enabled and allowed to use the microphone; this browser may not include speech recognition.',
+    network: "Your phone's speech service couldn't reach Google. Check your connection, then update the Google app and \"Speech Recognition & Synthesis\" (Speech Services by Google) in the Play Store.",
+    'language-not-supported': 'This language is not available for voice input on this device. Add Chinese (普通话) in Google voice typing languages, or switch From to English.',
+    aborted: 'Listening was cancelled before anything was heard. Tap the mic to try again.',
+    'bad-grammar': 'The speech service rejected the request. Tap the mic to try again.',
+  };
+
+  function micMsg(text, kind) {
+    if (!micMsgEl) {
+      setStatus(text);
       return;
     }
-    if (state.listening && state.recog) {
-      state.recog.stop();
+    micMsgEl.textContent = text || '';
+    micMsgEl.hidden = !text;
+    micMsgEl.className = 'mic-msg' + (kind ? ' ' + kind : '');
+  }
+
+  function micUi(on) {
+    micBtn.classList.toggle('on', on);
+    micBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+
+  // Diagnostic only, after a mic failure: asks for the mic once and releases it
+  // straight away so it never competes with the recognizer for the device.
+  function probeMic(code) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      stream.getTracks().forEach((t) => t.stop());
+      if (code === 'not-allowed') {
+        micMsg('Speech error "not-allowed": the page can use the microphone, but the speech service was refused. Check the Google app has microphone permission (Android Settings → Apps → Google → Permissions).', 'err');
+      }
+    }).catch((e) => {
+      const name = (e && e.name) || 'Error';
+      micMsg('Speech error "' + code + '" (microphone check: ' + name + '). ' + (MIC_HINTS[code] || ''), 'err');
+    });
+  }
+
+  function startRecognition(SR, lang, isRetry) {
+    let rec;
+    try {
+      rec = new SR();
+    } catch (err) {
+      micMsg('Speech recognition could not be created in this browser (' + ((err && err.name) || 'error') + ').', 'err');
       return;
     }
-    const rec = new SR();
-    rec.lang = sourceIsZh() ? 'zh-CN' : 'en-US';
+    const zh = sourceIsZh();
+    rec.lang = lang;
     rec.interimResults = true;
     rec.continuous = false;
-    state.micBase = src.value;
+    rec.maxAlternatives = 1;
+    const run = { gotResult: false, error: '', retryLang: '' };
+    if (!isRetry) state.micBase = src.value;
+
+    rec.onstart = () => {
+      if (state.recog !== rec) return;
+      micMsg(zh ? 'Listening for Mandarin… speak now.' : 'Listening for English… speak now.', 'info');
+    };
     rec.onresult = (ev) => {
+      if (state.recog !== rec) return;
       let said = '';
-      for (let i = 0; i < ev.results.length; i++) said += ev.results[i][0].transcript;
-      src.value = state.micBase + said;
+      for (let i = 0; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        if (r && r[0]) said += r[0].transcript;
+      }
+      if (said) run.gotResult = true;
+      src.value = (state.micBase + said).slice(0, MAX);
       clearComp();
       afterEdit();
     };
+    rec.onnomatch = () => {
+      if (state.recog !== rec) return;
+      run.error = run.error || 'no-match';
+      micMsg('Speech error "no-match": speech was heard but not recognised. Try again, speaking clearly right after the beep.', 'err');
+    };
     rec.onerror = (ev) => {
-      const map = {
-        'not-allowed': 'Microphone permission was blocked. Allow the mic for this site and try again.',
-        'service-not-allowed': 'Speech recognition is turned off in this browser.',
-        network: 'Speech recognition needs a network connection and could not reach it.',
-        'no-speech': 'No speech was heard. Try again.',
-        'audio-capture': 'No microphone was found.',
-        aborted: '',
-      };
-      if (map[ev.error]) setStatus(map[ev.error]);
-      else if (ev.error) setStatus('Speech recognition error: ' + ev.error);
+      if (state.recog !== rec) return;
+      const code = (ev && ev.error) || 'unknown';
+      run.error = code;
+      if (code === 'language-not-supported' && zh && lang !== 'cmn-Hans-CN') {
+        run.retryLang = 'cmn-Hans-CN';
+        micMsg('Speech error "language-not-supported" for ' + lang + ' — retrying as cmn-Hans-CN…', 'info');
+        return;
+      }
+      const detail = ev && ev.message ? ' (' + ev.message + ')' : '';
+      micMsg('Speech error "' + code + '"' + detail + ' [' + lang + ']. ' + (MIC_HINTS[code] || 'Tap the mic to try again.'), 'err');
+      if (code === 'not-allowed' || code === 'audio-capture') probeMic(code);
     };
     rec.onend = () => {
+      if (state.recog !== rec) return;
+      state.recog = null;
       state.listening = false;
-      micBtn.classList.remove('on');
-      micBtn.setAttribute('aria-pressed', 'false');
+      micUi(false);
+      if (run.retryLang) {
+        startRecognition(SR, run.retryLang, true);
+        return;
+      }
+      if (!run.gotResult && !run.error) {
+        micMsg("Didn't catch anything — tap and speak right after the beep.", 'err');
+      } else if (run.gotResult && !run.error) {
+        micMsg('', '');
+      }
     };
+
     state.recog = rec;
     state.listening = true;
-    micBtn.classList.add('on');
-    micBtn.setAttribute('aria-pressed', 'true');
-    setStatus(sourceIsZh() ? 'Listening for Mandarin…' : 'Listening for English…');
+    micUi(true);
+    micMsg('Starting microphone…', 'info');
     try {
       rec.start();
     } catch (err) {
+      state.recog = null;
       state.listening = false;
-      micBtn.classList.remove('on');
-      setStatus('Could not start the microphone.');
+      micUi(false);
+      micMsg('Could not start speech recognition (' + ((err && (err.name || err.message)) || 'error') + '). Wait a moment and tap the mic again.', 'err');
     }
+  }
+
+  function toggleMic() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      micMsg('This browser has no speech recognition (SpeechRecognition is missing). Use Chrome on Android/desktop, Edge, or Safari.', 'err');
+      return;
+    }
+    const now = Date.now();
+    if (now - state.micTap < 400) return; // ignore double taps
+    state.micTap = now;
+    if (state.listening && state.recog) {
+      try { state.recog.stop(); } catch (e) { /* already stopped */ }
+      return;
+    }
+    startRecognition(SR, sourceIsZh() ? 'zh-CN' : 'en-US', false);
   }
 
   function outputText() {

@@ -395,3 +395,9 @@ footer a:hover { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* microphone feedback, shown right under the input */
+.mic-msg { margin: 6px 6px 0; padding: 6px 10px; border-radius: 8px; font-size: 0.9rem; line-height: 1.4; }
+.mic-msg[hidden] { display: none; }
+.mic-msg.info { color: var(--muted); }
+.mic-msg.err { color: #fca5a5; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); }
