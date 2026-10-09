@@ -7,7 +7,9 @@
   <meta name="theme-color" content="#09090b">
   <meta name="description" content="Chinese and English translator with offline pinyin input, tone marks, and speech.">
   <title>译 · Chinese ↔ English</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-icon.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -22,7 +24,13 @@
         <h1>Chinese ↔ English</h1>
         <p class="lede">Translate both ways. Type pinyin when the source is Chinese — the dictionary stays on this device.</p>
       </div>
-      <span class="seal" aria-hidden="true">译</span>
+      <span class="seal" aria-hidden="true">
+        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+          <path d="M8 8H56V56H8Z" stroke-width="4"/>
+          <path d="M8 8L16 16M56 8L48 16M56 56L48 48M8 56L16 48M16 16H48V48H16Z" stroke-width="3"/>
+          <path d="M32 23V41M27 28L32 23L37 28M27 36L32 41L37 36" stroke-width="3.5"/>
+        </svg>
+      </span>
     </div>
   </header>
 
