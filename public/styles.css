@@ -349,6 +349,37 @@ rt {
   font-weight: 400;
 }
 
+/* English "sounds like" respelling under the pinyin */
+.sl { margin: 10px 0 0; }
+
+.sl-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--faint);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sl-line {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.sl-word { white-space: nowrap; }
+.sl-sep { margin: 0 2px; color: var(--faint); }
+
+.sl-tone {
+  margin-left: 1px;
+  color: var(--faint);
+  font-size: 0.75em;
+  vertical-align: 0.35em;
+  letter-spacing: -0.08em;
+}
+
 .prov { min-height: 1.2em; padding: 0 6px; }
 
 .status { min-height: 1.4em; margin-top: 12px; }

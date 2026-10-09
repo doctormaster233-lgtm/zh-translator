@@ -84,7 +84,26 @@
       }
       return '<ruby>' + escapeHtml(seg.text) + '<rt>' + escapeHtml(seg.pinyin) + '</rt></ruby>';
     }).join('');
-    return '<p class="py-line">' + escapeHtml(line) + '</p><div class="py-ruby">' + ruby + '</div>';
+    return '<p class="py-line">' + escapeHtml(line) + '</p><div class="py-ruby">' + ruby + '</div>' + soundsLikeBlock(text);
+  }
+
+  const TONE_NAME = ['', '1st tone (high, level)', '2nd tone (rising)', '3rd tone (dip, then rise)', '4th tone (falling)', 'neutral tone'];
+
+  // English "sound it out" respelling, e.g. 你好 → nee↘↗-how↘↗. Hyphens join the
+  // syllables of one word, spaces separate words; small arrows show the tone.
+  function soundsLikeBlock(text) {
+    if (!ZhIme.soundsLikeWords) return '';
+    const words = ZhIme.soundsLikeWords(text).filter((w) => w.syllables.length);
+    if (!words.length) return '';
+    const plain = ZhIme.soundsLike(text);
+    const html = words.map((w) => '<span class="sl-word">' + w.syllables.map((r) => {
+      const arrow = r.arrow
+        ? '<span class="sl-tone" title="' + TONE_NAME[r.tone] + '" aria-hidden="true">' + r.arrow + '</span>'
+        : '';
+      return '<span class="sl-syl">' + escapeHtml(r.text) + arrow + '</span>';
+    }).join('<span class="sl-sep" aria-hidden="true">-</span>') + '</span>').join(' ');
+    return '<div class="sl"><span class="sl-label">Sounds like</span>'
+      + '<p class="sl-line" aria-label="' + escapeHtml('Sounds like: ' + plain) + '">' + html + '</p></div>';
   }
 
   function renderPy(el, text) {

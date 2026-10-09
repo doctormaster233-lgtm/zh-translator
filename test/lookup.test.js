@@ -44,7 +44,36 @@ assert.strictEqual(ime.remainderAfterPick('nihao', 'ni'), 'hao');
 assert.strictEqual(ime.remainderAfterPick('ni3hao3', 'ni'), 'hao3');
 assert.strictEqual(ime.remainderAfterPick('nihao', 'nihao'), '');
 
+// English "sounds like" respelling
+const respellCases = {
+  nihao: 'nee-how',
+  xiexie: 'syeh-syeh',
+  zhongguo: 'jong-gwaw',
+  zaoshanghao: 'dzow-shahng-how',
+  shi: 'shr',
+  si: 'sz',
+  'nü': 'nyoo',
+  'lüe': 'lyweh',
+  qing: 'ching',
+  xue: 'shweh',
+};
+Object.keys(respellCases).forEach((py) => {
+  assert.strictEqual(ime.respell(py), respellCases[py], 'respell ' + py);
+});
+assert.strictEqual(ime.respell('nv'), 'nyoo', 'v spelling of ü');
+assert.strictEqual(ime.respell('lve'), 'lyweh', 'v spelling of üe');
+assert.strictEqual(ime.respell('nǐ hǎo'), 'nee-how', 'tone-marked input');
+assert.strictEqual(ime.respell('ni3hao3', { tones: true }), 'nee↘↗-how↘↗', 'tone arrows');
+assert.strictEqual(ime.respellSyllable('zhōng').tone, 1);
+assert.strictEqual(ime.soundsLike('你好'), 'nee-how');
+assert.strictEqual(ime.soundsLike('谢谢'), 'syeh-syeh');
+assert.strictEqual(ime.soundsLike('中国'), 'jong-gwaw');
+assert.strictEqual(ime.soundsLike('早上好'), 'dzow-shahng-how');
+assert.strictEqual(ime.soundsLike('中国', { tones: true }), 'jong→-gwaw↗');
+assert.strictEqual(ime.soundsLike('我是学生。'), 'waw shr shweh-shung');
+
 console.log('lookup tests passed');
+Object.keys(respellCases).forEach((py) => console.log(' ' + py.padEnd(12), ime.respell(py, { tones: true })));
 console.log(' nihao   ', words('nihao').slice(0, 5).join(' '));
 console.log(' xiexie  ', words('xiexie').slice(0, 5).join(' '));
 console.log(' zhongguo', words('zhongguo').slice(0, 5).join(' '));

@@ -319,6 +319,136 @@
     return s.slice(i).replace(/^[\s'\-]+/, '');
   }
 
+  /* ---- English "sounds like" respelling ---------------------------------- */
+
+  // Finals spelled for an English reader. Keys use ü for the umlaut vowel.
+  const FINAL_EN = {
+    a: 'ah', ai: 'eye', an: 'ahn', ang: 'ahng', ao: 'ow',
+    e: 'uh', ei: 'ay', en: 'un', eng: 'ung', er: 'are',
+    o: 'aw', ou: 'oh', ong: 'ong',
+    i: 'ee', ia: 'yah', ian: 'yen', iang: 'yahng', iao: 'yow', ie: 'yeh',
+    in: 'een', ing: 'ing', io: 'yaw', iong: 'yong', iu: 'yo',
+    u: 'oo', ua: 'wah', uai: 'why', uan: 'wahn', uang: 'wahng', ue: 'weh',
+    ui: 'way', un: 'wun', ueng: 'wung', uo: 'waw',
+    'ü': 'yoo', 'üe': 'yweh', 'üan': 'ywen', 'ün': 'yoon',
+  };
+  // After j/q/x the ü finals lose the "y" glide (the initial already has it).
+  const FINAL_PALATAL = { 'ü': 'yoo', 'üe': 'weh', 'üan': 'wen', 'ün': 'yoon' };
+  const INITIAL_EN = {
+    b: 'b', p: 'p', m: 'm', f: 'f', d: 'd', t: 't', n: 'n', l: 'l',
+    g: 'g', k: 'k', h: 'h', j: 'j', q: 'ch', x: 's',
+    zh: 'j', ch: 'ch', sh: 'sh', r: 'r', z: 'dz', c: 'ts', s: 's',
+  };
+  // The buzzing "-i" after retroflex and dental initials.
+  const BUZZ_I = { zh: 'jr', ch: 'chr', sh: 'shr', r: 'rr', z: 'dzz', c: 'tsz', s: 'sz' };
+  // y-/w- spellings rewritten to their zero-initial finals.
+  const YW = {
+    yi: 'i', ya: 'ia', yan: 'ian', yang: 'iang', yao: 'iao', ye: 'ie', yin: 'in',
+    ying: 'ing', yo: 'io', yong: 'iong', you: 'iu', yu: 'ü', yuan: 'üan', yue: 'üe',
+    yun: 'ün', wu: 'u', wa: 'ua', wo: 'uo', wai: 'uai', wei: 'ui', wan: 'uan',
+    wen: 'un', wang: 'uang', weng: 'ueng',
+  };
+  const TONE_ARROW = ['', '→', '↗', '↘↗', '↘', ''];
+  const MARKED = {};
+  Object.keys(VOWEL_MARKS).forEach((v) => {
+    VOWEL_MARKS[v].forEach((m, t) => { if (t) MARKED[m] = [v, t]; });
+  });
+
+  /** Split one pinyin syllable (tone marks, tone number, v or u: for ü) into base + tone. */
+  function parseSyllable(raw) {
+    let s = String(raw || '').toLowerCase().normalize('NFC').replace(/u:/g, 'ü').replace(/v/g, 'ü');
+    let tone = 0;
+    let base = '';
+    for (const ch of s) {
+      if (MARKED[ch]) {
+        base += MARKED[ch][0];
+        tone = MARKED[ch][1];
+      } else if (ch >= '1' && ch <= '5') {
+        tone = Number(ch);
+      } else if ((ch >= 'a' && ch <= 'z') || ch === 'ü' || ch === 'ê') {
+        base += ch === 'ê' ? 'e' : ch;
+      }
+    }
+    return { base, tone: tone || 5 };
+  }
+
+  /** Respell one syllable: { text: 'nee', tone: 3, arrow: '↘↗' }. */
+  function respellSyllable(raw) {
+    const { base, tone } = parseSyllable(raw);
+    const out = { text: base, tone, arrow: TONE_ARROW[tone] || '' };
+    if (!base) return out;
+    if (base === 'r') { out.text = 'r'; return out; }
+    let initial = '';
+    let fin = base;
+    if (YW[base]) {
+      fin = YW[base];
+    } else {
+      const m = /^(zh|ch|sh|[bpmfdtnlgkhjqxrzcs])(.*)$/.exec(base);
+      if (m) { initial = m[1]; fin = m[2]; }
+    }
+    if (!fin) return out; // m, n, ng, hm: leave as written
+    if (fin === 'i' && BUZZ_I[initial]) { out.text = BUZZ_I[initial]; return out; }
+    const palatal = initial === 'j' || initial === 'q' || initial === 'x';
+    if (palatal && fin[0] === 'u') fin = 'ü' + fin.slice(1);
+    let en = (palatal && FINAL_PALATAL[fin]) || FINAL_EN[fin];
+    if (!en) return out;
+    if (initial === 'x' && en[0] !== 'y') {
+      out.text = 'sh' + en; // xi → shee, xue → shweh, xing → shing
+    } else if (initial) {
+      out.text = INITIAL_EN[initial] + en;
+    } else {
+      out.text = en;
+    }
+    return out;
+  }
+
+  /** Break a pinyin word ("nǐ hǎo", "ni3hao3", "nihao", "lüe") into syllable strings. */
+  function splitPinyin(word) {
+    const tokens = String(word || '').trim().split(/[\s'’\-]+/).filter(Boolean);
+    const out = [];
+    tokens.forEach((tok) => {
+      const { base } = parseSyllable(tok);
+      // A single known syllable (marked like hǎo, numbered like hao3, or lüe / nv).
+      if (!base || SYL.has(base.replace(/ü/g, 'v')) || SYL.has(base)) {
+        out.push(tok);
+        return;
+      }
+      // Run several syllables together (nihao, ni3hao3): reuse the IME segmenter.
+      segmentComposition(tok).forEach((seg) => {
+        if (seg.sep || seg.stray) return;
+        out.push(seg.syl + (seg.tone || ''));
+      });
+    });
+    return out;
+  }
+
+  /** Respell a pinyin word: 'nǐ hǎo' / 'nihao' → 'nee-how'. opts.tones adds tone arrows. */
+  function respell(word, opts) {
+    const arrows = opts && opts.tones;
+    return splitPinyin(word)
+      .map((syl) => {
+        const r = respellSyllable(syl);
+        return arrows && r.arrow ? r.text + r.arrow : r.text;
+      })
+      .filter(Boolean)
+      .join('-');
+  }
+
+  /** Per-word respelling of Chinese text: [{ text: '早上', syllables: [{text, tone, arrow}, ...] }, ...]. */
+  function soundsLikeWords(text) {
+    return annotate(text)
+      .filter((seg) => seg.pinyin)
+      .map((seg) => ({ text: seg.text, syllables: splitPinyin(seg.pinyin).map(respellSyllable) }));
+  }
+
+  /** Chinese text → 'dzow-shahng how'. Syllables hyphenated within words, spaces between words. */
+  function soundsLike(text, opts) {
+    const arrows = opts && opts.tones;
+    return soundsLikeWords(text)
+      .map((w) => w.syllables.map((r) => (arrows && r.arrow ? r.text + r.arrow : r.text)).join('-'))
+      .join(' ');
+  }
+
   function ready() {
     return entries.length > 0;
   }
@@ -334,5 +464,10 @@
     compositionPinyin,
     remainderAfterPick,
     ready,
+    parseSyllable,
+    respellSyllable,
+    respell,
+    soundsLike,
+    soundsLikeWords,
   };
 });
